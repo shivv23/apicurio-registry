@@ -1,6 +1,7 @@
-import { FunctionComponent } from "react";
+import { FunctionComponent, useState } from "react";
 import "./SearchPageEmptyState.css";
 import {
+    Button,
     EmptyState,
     EmptyStateBody,
     EmptyStateFooter,
@@ -9,6 +10,9 @@ import {
 import { PlusCircleIcon } from "@patternfly/react-icons";
 import { If } from "@apicurio/common-ui-components";
 import { SearchType } from "@app/pages/search/SearchType.ts";
+import { CreateGroupModal } from "@app/components";
+import { useGroupsService } from "@services/useGroupsService.ts";
+import { CreateGroup } from "@sdk/lib/generated-client/models";
 
 /**
  * Properties
@@ -23,6 +27,26 @@ export type SearchPageEmptyStateProps = {
  * Models the empty state for the Search page (when there are no results).
  */
 export const SearchPageEmptyState: FunctionComponent<SearchPageEmptyStateProps> = (props: SearchPageEmptyStateProps) => {
+    const [isCreateGroupModalOpen, setIsCreateGroupModalOpen] = useState(false);
+    const groups = useGroupsService();
+
+    const doCreateGroup = (data: CreateGroup): void => {
+        setIsCreateGroupModalOpen(false);
+        groups.createGroup(data).then(() => {
+            // Optionally, we could refresh the group list here, but the empty state will be re-evaluated
+            // when the group list updates via the search results. For simplicity, we just close the modal.
+        }).catch(error => {
+            // TODO: handle error (maybe show an error message)
+            console.error("Failed to create group:", error);
+            // For now, we just close the modal and let the user try again.
+            setIsCreateGroupModalOpen(false);
+        });
+    };
+
+    const onCreateGroup = (): void => {
+        setIsCreateGroupModalOpen(true);
+    };
+
     let entitySingular: string;
     let entityPlural: string;
     switch (props.searchType) {
@@ -52,8 +76,17 @@ export const SearchPageEmptyState: FunctionComponent<SearchPageEmptyStateProps> 
                 </EmptyStateBody>
             </If>
             <EmptyStateFooter>
+                {props.searchType === SearchType.GROUP && !props.isFiltered && (
+                    <Button variant="primary" onClick={onCreateGroup}>
+                        Create group
+                    </Button>
+                )}
             </EmptyStateFooter>
+            <CreateGroupModal
+                isOpen={isCreateGroupModalOpen}
+                onClose={() => setIsCreateGroupModalOpen(false)}
+                onCreate={doCreateGroup}
+            />
         </EmptyState>
     );
-
 };
